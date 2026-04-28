@@ -74,12 +74,20 @@ export function useGame() {
 
     const handlePlayerJoined = ({ player, room }) => {
       setRoom(room);
-      showNotification(`${player.username} joined the room!`, "success");
+      if (socket && player.id === socket.id) {
+        setMyPlayer(player);
+      } else {
+        showNotification(`${player.username} joined the room!`, "success");
+      }
     };
 
     const handleGameStart = ({ room, currentPlayer, currentPlayerId }) => {
       setRoom(room);
       setCurrentPlayerId(currentPlayerId);
+      if (socket) {
+        const me = room.players.find((p) => p.id === socket.id);
+        if (me) setMyPlayer(me);
+      }
       setGuessHistory([]);
       setHint(null);
       setScreen(SCREENS.GAME);
