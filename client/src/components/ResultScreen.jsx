@@ -144,9 +144,25 @@ export default function ResultScreen({
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, type: "spring" }}
+          style={{ flexDirection: "column", gap: "8px" }}
         >
-          <span className="secret-label">The secret number was</span>
-          <span className="secret-number">{gameResult.secretNumber}</span>
+          <span className="secret-label">The target numbers were</span>
+          <div style={{ display: "flex", gap: "24px", justifyContent: "center" }}>
+            {room?.players?.map((p) => {
+              const oppId = room?.players?.find((op) => op.id !== p.id)?.id;
+              const secretToGuess = gameResult.secretNumbers?.[oppId];
+              return (
+                <div key={p.id} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    {p.username}'s target
+                  </span>
+                  <span className="secret-number" style={{ fontSize: "1.8rem" }}>
+                    {secretToGuess || "?"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </motion.div>
 
         {/* Scoreboard */}

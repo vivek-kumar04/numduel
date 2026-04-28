@@ -120,7 +120,7 @@ io.on("connection", (socket) => {
     const room = {
       id: roomId,
       players: [player],
-      secretNumber: null,
+      secretNumbers: {},
       currentTurnIndex: 0,
       guessHistory: [],
       chat: [],
@@ -190,22 +190,42 @@ io.on("connection", (socket) => {
       room: sanitizeRoom(room),
     });
 
-    // Auto-start game
-    room.status = "playing";
-    room.secretNumber = generateSecretNumber();
-    room.currentTurnIndex = 0; // Player 1 goes first
+    // Start setting numbers phase
+    room.status = "setting_numbers";
+    room.secretNumbers = {};
 
     console.log(
-      `🎮 Game starting in room ${roomId} — secret: ${room.secretNumber}`
+      `🔢 Setting numbers phase in room ${roomId}`
     );
 
-    io.to(roomId).emit("game_start", {
+    io.to(roomId).emit("setting_numbers", {
       room: sanitizeRoom(room),
-      currentPlayer: room.players[0].username,
-      currentPlayerId: room.players[0].id,
     });
+  });
 
-    startTurnTimer(roomId);
+  // ── Set Secret Number ──
+  socket.on("set_secret_number", ({ roomId, number }) => {
+    const room = rooms.get(roomId);
+    if (!room || room.status !== "setting_numbers") return;
+
+    const parsedNumber = parseInt(number, 10);
+    if (isNaN(parsedNumber) || parsedNumber < 1 || parsedNumber > 100) {
+      socket.emit("error", { message: "Number must be between 1 and 100!" });
+      return;
+    }
+
+    room.secretNumbers[socket.id] = parsedNumber;
+
+    if (Object.keys(room.secretNumbers).length === 2) {
+      room.status = "playing";
+      room.currentTurnIndex = 0;
+      io.to(roomId).emit("game_start", {
+        room: sanitizeRoom(room),
+        currentPlayer: room.players[0].username,
+        currentPlayerId: room.players[0].id,
+      });
+      startTurnTimer(roomId);
+    }
   });
 
   // ── Submit Guess ──
@@ -227,7 +247,9 @@ io.on("connection", (socket) => {
 
     clearTurnTimer(room);
 
-    const hint = getHint(parsedGuess, room.secretNumber);
+    const opponent = room.players.find((p) => p.id !== socket.id);
+    const secretToGuess = room.secretNumbers[opponent.id];
+    const hint = getHint(parsedGuess, secretToGuess);
     const guessEntry = {
       player: currentPlayer.username,
       avatar: currentPlayer.avatar,
@@ -249,7 +271,7 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("game_over", {
         winner: currentPlayer.username,
         winnerId: currentPlayer.id,
-        secretNumber: room.secretNumber,
+        secretNumbers: room.secretNumbers,
         scores: room.scores,
         guessHistory: room.guessHistory,
       });
@@ -306,10 +328,9 @@ io.on("connection", (socket) => {
     // Broadcast who requested
     io.to(roomId).emit("rematch_requested", { player: player.username });
 
-    // If both players want rematch
     if (room.rematchRequests.size >= 2) {
-      room.status = "playing";
-      room.secretNumber = generateSecretNumber();
+      room.status = "setting_numbers";
+      room.secretNumbers = {};
       room.currentTurnIndex = 0;
       room.guessHistory = [];
       room.winner = null;
@@ -317,14 +338,10 @@ io.on("connection", (socket) => {
       room.rematchRequests = new Set();
       clearTurnTimer(room);
 
-      io.to(roomId).emit("game_restart", {
-        room: sanitizeRoom(room),
-        currentPlayer: room.players[0].username,
-        currentPlayerId: room.players[0].id,
+      io.to(roomId).emit("setting_numbers", {
+        room: sanitizeRoom(room)
       });
-
-      startTurnTimer(roomId);
-      console.log(`🔄 Rematch started in room ${roomId}`);
+      console.log(`🔄 Rematch: Setting numbers in room ${roomId}`);
     }
   });
 
@@ -356,7 +373,7 @@ io.on("connection", (socket) => {
 
 // ─── Sanitize Room (remove secret number) ────────────────────────────────────
 function sanitizeRoom(room) {
-  const { secretNumber, turnTimer, ...safe } = room;
+  const { secretNumbers, turnTimer, ...safe } = room;
   return safe;
 }
 

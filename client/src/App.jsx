@@ -60,6 +60,8 @@ function App() {
               onSubmitGuess={game.submitGuess}
               onSendChat={game.sendChat}
               error={game.error}
+              hasSetNumber={game.hasSetNumber}
+              onSetSecretNumber={game.setSecretNumber}
             />
           </motion.div>
         )}

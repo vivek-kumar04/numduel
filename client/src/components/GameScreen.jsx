@@ -16,16 +16,24 @@ export default function GameScreen({
   onSubmitGuess,
   onSendChat,
   error,
+  hasSetNumber,
+  onSetSecretNumber,
 }) {
   const [guess, setGuess] = useState("");
+  const [secretNumberInput, setSecretNumberInput] = useState("");
   const [chatMsg, setChatMsg] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const chatEndRef = useRef(null);
-
   // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat]);
+
+  const handleSetSecret = () => {
+    const val = parseInt(secretNumberInput);
+    if (isNaN(val) || val < 1 || val > 100) return;
+    onSetSecretNumber(val);
+  };
 
   const handleGuess = () => {
     const val = parseInt(guess);
@@ -100,7 +108,7 @@ export default function GameScreen({
                     <div className="player-card-score">
                       🏆 {room?.scores?.[p.username] || 0}
                     </div>
-                    {isActive && (
+                    {room?.status === "playing" && isActive && (
                       <motion.div
                         className="turn-indicator"
                         animate={{ opacity: [1, 0.5, 1] }}
@@ -115,19 +123,21 @@ export default function GameScreen({
             </div>
 
             {/* Timer */}
-            <div className="timer-row">
-              <div className="timer-bar-bg">
-                <motion.div
-                  className="timer-bar-fill"
-                  style={{ background: timerColor }}
-                  animate={{ width: `${timerPct}%` }}
-                  transition={{ duration: 0.5 }}
-                />
+            {room?.status === "playing" && (
+              <div className="timer-row">
+                <div className="timer-bar-bg">
+                  <motion.div
+                    className="timer-bar-fill"
+                    style={{ background: timerColor }}
+                    animate={{ width: `${timerPct}%` }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
+                <span className="timer-num" style={{ color: timerColor }}>
+                  {turnTimer}s
+                </span>
               </div>
-              <span className="timer-num" style={{ color: timerColor }}>
-                {turnTimer}s
-              </span>
-            </div>
+            )}
 
             {/* Hint display */}
             <AnimatePresence mode="wait">
@@ -154,9 +164,62 @@ export default function GameScreen({
               )}
             </AnimatePresence>
 
+            {/* Phase: Setting Numbers */}
+            <AnimatePresence>
+              {room?.status === "setting_numbers" && (
+                <motion.div
+                  className="guess-panel"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                >
+                  {!hasSetNumber ? (
+                    <>
+                      <p className="guess-label">
+                        🤔 Choose a secret number (1–100) for your opponent to guess!
+                      </p>
+                      <div className="guess-input-row">
+                        <input
+                          className="guess-input"
+                          type="number"
+                          min={1}
+                          max={100}
+                          placeholder="?"
+                          value={secretNumberInput}
+                          onChange={(e) => setSecretNumberInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleSetSecret()}
+                          autoFocus
+                        />
+                        <motion.button
+                          className="btn-guess"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleSetSecret}
+                          disabled={!secretNumberInput}
+                        >
+                          🔒 Set Number
+                        </motion.button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="waiting-turn">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                        className="spin-icon"
+                      >
+                        ⏳
+                      </motion.div>
+                      <span>Waiting for opponent to choose…</span>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Guess Input */}
             <AnimatePresence>
-              {isMyTurn && (
+              {room?.status === "playing" && isMyTurn && (
                 <motion.div
                   className="guess-panel"
                   initial={{ opacity: 0, y: 20 }}
@@ -204,7 +267,7 @@ export default function GameScreen({
                 </motion.div>
               )}
 
-              {!isMyTurn && (
+              {room?.status === "playing" && !isMyTurn && (
                 <motion.div
                   className="waiting-turn"
                   initial={{ opacity: 0 }}

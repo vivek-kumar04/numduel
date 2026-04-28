@@ -31,6 +31,7 @@ export function useGame() {
   const [rematchStatus, setRematchStatus] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [hasSetNumber, setHasSetNumber] = useState(false);
 
   const timerRef = useRef(null);
 
@@ -130,16 +131,16 @@ export function useGame() {
       showNotification(`${player} wants a rematch!`, "info");
     };
 
-    const handleGameRestart = ({ room, currentPlayer, currentPlayerId }) => {
+    const handleSettingNumbers = ({ room }) => {
       setRoom(room);
-      setCurrentPlayerId(currentPlayerId);
+      setHasSetNumber(false);
       setGuessHistory([]);
       setHint(null);
       setGameResult(null);
       setRematchStatus(null);
       setScreen(SCREENS.GAME);
-      startTimer();
-      showNotification("New round started!", "success");
+      stopTimer();
+      showNotification("Choose a secret number for your opponent!", "info");
     };
 
     const handlePlayerDisconnected = ({ username }) => {
@@ -164,7 +165,7 @@ export function useGame() {
     socket.on("game_over", handleGameOver);
     socket.on("chat_message", handleChatMessage);
     socket.on("rematch_requested", handleRematchRequested);
-    socket.on("game_restart", handleGameRestart);
+    socket.on("setting_numbers", handleSettingNumbers);
     socket.on("player_disconnected", handlePlayerDisconnected);
     socket.on("error", handleError);
 
@@ -183,7 +184,7 @@ export function useGame() {
       socket.off("game_over", handleGameOver);
       socket.off("chat_message", handleChatMessage);
       socket.off("rematch_requested", handleRematchRequested);
-      socket.off("game_restart", handleGameRestart);
+      socket.off("setting_numbers", handleSettingNumbers);
       socket.off("player_disconnected", handlePlayerDisconnected);
       socket.off("error", handleError);
     };
@@ -227,6 +228,15 @@ export function useGame() {
     emit("request_rematch", { roomId: room.id });
   }, [emit, room]);
 
+  const setSecretNumber = useCallback(
+    (number) => {
+      if (!room) return;
+      setHasSetNumber(true);
+      emit("set_secret_number", { roomId: room.id, number });
+    },
+    [emit, room]
+  );
+
   const goHome = useCallback(() => {
     setScreen(SCREENS.HOME);
     setRoom(null);
@@ -236,6 +246,7 @@ export function useGame() {
     setHint(null);
     setGameResult(null);
     setRematchStatus(null);
+    setHasSetNumber(false);
     stopTimer();
   }, [stopTimer]);
 
@@ -257,6 +268,7 @@ export function useGame() {
     rematchStatus,
     notification,
     isConnected,
+    hasSetNumber,
     // actions
     createRoom,
     joinRoom,
@@ -264,5 +276,6 @@ export function useGame() {
     sendChat,
     requestRematch,
     goHome,
+    setSecretNumber,
   };
 }
