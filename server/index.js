@@ -178,8 +178,14 @@ io.on("connection", (socket) => {
     socket.data.roomId = roomId;
     socket.data.username = username;
 
-    // Notify both players
-    io.to(roomId).emit("player_joined", {
+    // Notify the joining player specifically
+    socket.emit("room_joined", {
+      player,
+      room: sanitizeRoom(room),
+    });
+
+    // Notify other players
+    socket.to(roomId).emit("player_joined", {
       player,
       room: sanitizeRoom(room),
     });

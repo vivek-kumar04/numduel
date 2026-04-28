@@ -72,13 +72,14 @@ export function useGame() {
       setScreen(SCREENS.WAITING);
     };
 
+    const handleRoomJoined = ({ player, room }) => {
+      setMyPlayer(player);
+      setRoom(room);
+    };
+
     const handlePlayerJoined = ({ player, room }) => {
       setRoom(room);
-      if (socket && player.id === socket.id) {
-        setMyPlayer(player);
-      } else {
-        showNotification(`${player.username} joined the room!`, "success");
-      }
+      showNotification(`${player.username} joined the room!`, "success");
     };
 
     const handleGameStart = ({ room, currentPlayer, currentPlayerId }) => {
@@ -154,6 +155,7 @@ export function useGame() {
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.on("room_created", handleRoomCreated);
+    socket.on("room_joined", handleRoomJoined);
     socket.on("player_joined", handlePlayerJoined);
     socket.on("game_start", handleGameStart);
     socket.on("guess_result", handleGuessResult);
@@ -172,6 +174,7 @@ export function useGame() {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
       socket.off("room_created", handleRoomCreated);
+      socket.off("room_joined", handleRoomJoined);
       socket.off("player_joined", handlePlayerJoined);
       socket.off("game_start", handleGameStart);
       socket.off("guess_result", handleGuessResult);
